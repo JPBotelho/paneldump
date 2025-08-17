@@ -41,7 +41,7 @@
     "addedLinks": [
       {
       "targets": ["grafana/dashboard/panel/menu"],      
-      "title": "Test UI Extension",
+      "title": "Export panel data",
       "description": "Run a custom action on this panel"
     }]
   },

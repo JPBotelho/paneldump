@@ -13,7 +13,7 @@ const App = (props: AppRootProps) => (
 
 export const plugin = new AppPlugin<{}>().setRootPage(App).addLink({
   targets: [PluginExtensionPoints.DashboardPanelMenu],
-  title: 'Test UI Extension',
+  title: 'Export panel data',
   description: 'Run a custom action on this panel',
   path: `/a/${pluginJson.id}/foo`,
   // The `context` is coming from the extension point.

@@ -89,6 +89,99 @@ export type ParseResponse = {
   parseErrorsByIdx: string[]; // empty string means no error at that index
 };
 
+function toPrometheusText(resp: any) {
+  let lines = [];
+
+  // loop over all results
+  for (const result of Object.values(resp.results) as any) {
+    if (!result.frames) continue;
+
+    for (const frame of result.frames) {
+      const fields = frame.schema.fields;
+      const timeField = fields.find((f: { type: string; }) => f.type === "time");
+      const valueField = fields.find((f: { type: string; }) => f.type === "number");
+
+      if (!timeField || !valueField) continue;
+
+      const metricName = valueField.labels.__name__ || valueField.name;
+      const labels = { ...valueField.labels };
+      delete labels.__name__;
+
+      // build labels string
+      const labelsStr =
+        Object.keys(labels).length > 0
+          ? "{" +
+            Object.entries(labels)
+              .map(([k, v]) => `${k}="${v}"`)
+              .join(",") +
+            "}"
+          : "";
+
+      // values: [timeArray, valueArray]
+      const [times, values] = frame.data.values;
+      for (let i = 0; i < times.length; i++) {
+        const ts = times[i]; // already ms epoch
+        const val = values[i];
+        lines.push(`${metricName}${labelsStr} ${val} ${ts}`);
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
+export function downloadText(filename: string, text: string): void {
+  const safeName = sanitizeFilename(filename);
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+
+  // IE/Edge (legacy) fallback
+  const navAny = navigator as any;
+  if (navAny && typeof navAny.msSaveOrOpenBlob === "function") {
+    navAny.msSaveOrOpenBlob(blob, safeName);
+    return;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+
+  // Feature-detect the download attribute
+  if ("download" in a) {
+    a.style.display = "none";
+    a.href = url;
+    a.download = safeName;
+    // Some SPA routers are less likely to intercept if we stop propagation
+    a.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+    document.body.appendChild(a);
+    a.click();
+    // Cleanup in a microtask to avoid revoking too early
+    setTimeout((): void => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 0);
+  } else {
+    // Safari fallback: open a data URL in a new tab
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUrl = reader.result as string;
+      const w = window.open(dataUrl, "_blank");
+      if (!w) {
+        // If popups are blocked, navigate current tab as a last resort
+        window.location.href = dataUrl;
+      }
+    };
+    reader.readAsDataURL(blob);
+  }
+}
+
+function sanitizeFilename(name: string): string {
+  const cleaned = (name || "").replace(/[\/\\:*?"<>|]+/g, "_").trim();
+  return cleaned || "download.txt";
+}
+
+
+
  
 
 function PageParse() {
@@ -103,28 +196,37 @@ function PageParse() {
     alert("Failed to load panel.")
     return
   }
-
+  const refIdFor = (i:number) => {
+    const A = 'A'.charCodeAt(0);
+    return i < 26 ? String.fromCharCode(A + i) : `Q${i}`;
+  };
   async function handleQueryNow() {
     if(dataSource == "") {
       return;
     }
-
     const body = {
-      queries: [
-        {
-          refId: 'A',
-          expr: queries[0],
-          datasource: { uid: dataSource },
-          queryType: 'instant',
-        },
-      ],
-      from: 'now-5m',
-      to: 'now',
+      queries: queries.map((expr, i) => ({
+        format: 'time_series',
+        refId: refIdFor(i),
+        expr,
+        datasource: { uid: dataSource },
+        // keep your choice of query type; use 'time_series' or remove queryType
+        // for range queries, or 'instant' for a single timestamp.
+        queryType: 'instant',
+      })),
+      from: JSON.parse(timerange).from,
+      to: JSON.parse(timerange).to,
     };
+    
     const resp = await getBackendSrv().post('/api/ds/query', body);
-    console.log(resp);
+    const metric_format = toPrometheusText(resp)
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `metrics-${stamp}.prom`;
+    downloadText(filename, metric_format);
+    //console.log(resp);
+    //console.log(metric_format)
   
-    console.log('Response frames:', resp.data);
+    //console.log('Response frames:', resp.data);
   }
 
   React.useEffect(() => {
@@ -134,14 +236,14 @@ function PageParse() {
     (async () => {
       try {
         const panel = await fetchPanelInfo(dashboardId, Number(panelId));
-        console.log('Panel title:', panel.title);
-        console.log('Datasource:', panel.datasource);
+        //console.log('Panel title:', panel.title);
+        //console.log('Datasource:', panel.datasource);
         setDatasource(panel.datasource.uid);
-        console.log('Targets:', panel.targets);
-        console.log('Full panel JSON:', panel.rawPanel);
+        //console.log('Targets:', panel.targets);
+        //console.log('Full panel JSON:', panel.rawPanel);
 
         const payload = extractQueries(panel); // { exprs: string[] }
-        console.log('Extracted queries:', payload);
+        //console.log('Extracted queries:', payload);
 
         const res = await lastValueFrom(
           getBackendSrv().fetch<ParseResponse>({
@@ -150,7 +252,7 @@ function PageParse() {
             data: payload,
           })
         );
-        console.log(res!.data)
+        ////console.log(res!.data)
         if (!cancelled) {
           setQueries(res.data?.metrics ?? []);
         }
@@ -167,26 +269,26 @@ function PageParse() {
     
     <PluginPage>
       <div data-testid={testIds.pageTwo.container}>
-        <p>If this page is empty, access it through a panel.</p>
+        
         {panelId && (
           <p>
-            URL param <code>dashboard</code>: <b>{dashboardId}</b>
+            Dashboard: <code>{dashboardId}</code>
           </p>
         )}
         {panelId && (
           <p>
-            URL param <code>panel</code>: <b>{panelId}</b>
+            Panel: <code>{panelId}</code>
           </p>
         )}
         {panelId && (
           <p>
-            URL param <code>timerange</code>: <b>{timerange}</b>
+            Time range: <code>{timerange}</code>
           </p>
         )}
           {/* Render queries here */}
     {queries.length > 0 && (
       <div>
-        <h3>Queries:</h3>
+        <h3>Metrics:</h3>
         <ul>
           {queries.map((q, i) => (
             <li key={i}>
@@ -198,7 +300,7 @@ function PageParse() {
     )}
     {/* Query button at the end */}
     <div style={{ marginTop: 16 }}>
-          <button onClick={handleQueryNow}>Query</button>
+          <button onClick={handleQueryNow}>Download metrics</button>
         </div>
       </div>
     </PluginPage>
