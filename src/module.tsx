@@ -22,7 +22,7 @@ export const plugin = new AppPlugin<{}>().setRootPage(App).addLink({
     // Returning `undefined` will hide the link at the extension point.
     // (In this example we are NOT showing the link for "timeseries" panels.)
     return {
-      path: `/a/${pluginJson.id}/two?dashboard=${context.dashboard.uid}&panel=${context.id}&timerange=${JSON.stringify(context.timeRange)}`,
+      path: `/a/${pluginJson.id}/parse?dashboard=${context.dashboard.uid}&panel=${context.id}&timerange=${JSON.stringify(context.timeRange)}`,
     };
 
     // Returning an empty object meanst that we don't update the link properties.

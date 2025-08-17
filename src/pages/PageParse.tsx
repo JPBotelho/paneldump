@@ -80,7 +80,7 @@ function extractQueries(panel: PanelInfo): string[] {
 }
 type ParseResponse = { ok: boolean; queriesReceived: number; exprs: string[] };
 
-function PageTwo() {
+function PageParse() {
   const pluginId = "jcosta-paneldump-app"
   const [queries, setQueries] = React.useState<string[]>([])
   // Read query param "query"
@@ -132,7 +132,7 @@ function PageTwo() {
     
     <PluginPage>
       <div data-testid={testIds.pageTwo.container}>
-        <p>This is page two.</p>
+        <p>If this page is empty, access it through a panel.</p>
         {panelId && (
           <p>
             URL param <code>dashboard</code>: <b>{dashboardId}</b>
@@ -166,4 +166,4 @@ function PageTwo() {
   );
 }
 
-export default PageTwo;
+export default PageParse;
