@@ -11,7 +11,8 @@ Metrics are exported in prometheus text exposition format, with timestamps.
 3. The plugin extracts the query/queries of the panel, and send them to the plugin's **go backend**. 
 4. The backend fills in Grafana macros with placedolders (think `$__interval` -> `1m`) 
 5. The backend extracts the metric names that are present in the query, sending these back to the frontend
-6. The fronted uses Grafana's HTTP datasource API to query prometheus for the requested queries.
+6. The fronted uses Grafana's HTTP datasource API to query prometheus for the requested metrics.
+7. Some chatGPT generated code converts it from Grafana/Prometheus response format into text exposition format.
 
 ## todo
 Look into instant / interval query shenanigans, ensure we are getting correct results.
