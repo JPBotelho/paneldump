@@ -1,7 +1,9 @@
 import React from 'react';
 import { testIds } from '../components/testIds';
-import { PluginPage, locationService, getBackendSrv } from '@grafana/runtime';
+import { PluginPage, locationService, getBackendSrv, getDataSourceSrv } from '@grafana/runtime';
 import { lastValueFrom } from 'rxjs';
+import { DataSourceRef } from '@grafana/schema';
+import { DataQueryRequest } from '@grafana/data';
 
 export type DashboardApiResponse = {
   dashboard: any; // full dashboard JSON model
@@ -87,6 +89,8 @@ export type ParseResponse = {
   parseErrorsByIdx: string[]; // empty string means no error at that index
 };
 
+ 
+
 function PageParse() {
   const pluginId = "jcosta-paneldump-app"
   const [queries, setQueries] = React.useState<string[]>([])
@@ -94,10 +98,33 @@ function PageParse() {
   const dashboardId = locationService.getSearchObject().dashboard as string | "";
   const panelId = locationService.getSearchObject().panel as string | "";
   const timerange = locationService.getSearchObject().timerange as string | "";
-
+  const [dataSource, setDatasource] = React.useState<string>("")
   if (dashboardId === "" || panelId === "" || timerange === "") {
     alert("Failed to load panel.")
     return
+  }
+
+  async function handleQueryNow() {
+    if(dataSource == "") {
+      return;
+    }
+
+    const body = {
+      queries: [
+        {
+          refId: 'A',
+          expr: queries[0],
+          datasource: { uid: dataSource },
+          queryType: 'instant',
+        },
+      ],
+      from: 'now-5m',
+      to: 'now',
+    };
+    const resp = await getBackendSrv().post('/api/ds/query', body);
+    console.log(resp);
+  
+    console.log('Response frames:', resp.data);
   }
 
   React.useEffect(() => {
@@ -109,6 +136,7 @@ function PageParse() {
         const panel = await fetchPanelInfo(dashboardId, Number(panelId));
         console.log('Panel title:', panel.title);
         console.log('Datasource:', panel.datasource);
+        setDatasource(panel.datasource.uid);
         console.log('Targets:', panel.targets);
         console.log('Full panel JSON:', panel.rawPanel);
 
@@ -168,6 +196,10 @@ function PageParse() {
         </ul>
       </div>
     )}
+    {/* Query button at the end */}
+    <div style={{ marginTop: 16 }}>
+          <button onClick={handleQueryNow}>Query</button>
+        </div>
       </div>
     </PluginPage>
   );
