@@ -4,6 +4,9 @@
 
 Metrics are exported in prometheus text exposition format, with timestamps.
 
+## Doesn't Grafana have a 'Download data' button?
+Yes, but it downloads the panel data after it's been processed. Meaning, if you are operating on the raw metrics, you will get the result of those operations. This is undesireable in the context of unit testing alerts - one wants to execute the alert query on the raw data and assert on its output.
+
 ## How it works
 
 1. The user presses 'Export panel data' from a panel's context menu. 
