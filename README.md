@@ -14,6 +14,16 @@ Metrics are exported in prometheus text exposition format, with timestamps.
 6. The fronted uses Grafana's HTTP datasource API to query prometheus for the requested metrics.
 7. Some chatGPT generated code converts it from Grafana/Prometheus response format into text exposition format.
 
+### Panel context menu
+
+![Panel context menu](imgs/ui_extension.png)
+
+### paneldump plugin page
+![paneldump plugin page](imgs/page.png)
+
+### Output in prometheus text format
+![Output in text format](imgs/output.png)
+
 ## todo
 Look into instant / interval query shenanigans, ensure we are getting correct results.
 
