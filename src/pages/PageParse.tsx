@@ -78,7 +78,14 @@ function extractQueries(panel: PanelInfo): string[] {
   }
   return out;
 }
-type ParseResponse = { ok: boolean; queriesReceived: number; exprs: string[] };
+export type ParseResponse = {
+  ok: boolean;
+  queriesReceived: number;
+  exprs: string[];
+  metrics: string[];
+  metricsCount: number;
+  parseErrorsByIdx: string[]; // empty string means no error at that index
+};
 
 function PageParse() {
   const pluginId = "jcosta-paneldump-app"
@@ -88,13 +95,13 @@ function PageParse() {
   const panelId = locationService.getSearchObject().panel as string | "";
   const timerange = locationService.getSearchObject().timerange as string | "";
 
-  if (dashboardId === "" || panelId === "" || timerange == "") {
+  if (dashboardId === "" || panelId === "" || timerange === "") {
     alert("Failed to load panel.")
     return
   }
 
   React.useEffect(() => {
-    if (!dashboardId || Number.isNaN(panelId)) return;
+    //if (!dashboardId || Number.isNaN(panelId)) return;
     let cancelled = false;
 
     (async () => {
@@ -115,9 +122,9 @@ function PageParse() {
             data: payload,
           })
         );
-
+        console.log(res!.data)
         if (!cancelled) {
-          setQueries(res.data?.exprs ?? []);
+          setQueries(res.data?.metrics ?? []);
         }
       } catch (e) {
         console.error('Error fetching panel:', e);
